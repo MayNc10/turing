@@ -2,7 +2,7 @@ use std::{collections::HashSet, fs::write, io::{stdin, stdout, Write}};
 
 use clap::Parser;
 use petgraph::{dot::Dot, graph::NodeIndex, Graph};
-use turing::{cli::Cli, loop_read, loop_read_res, state::{State, Transition}, tape::{Direction, TapeTransition}};
+use turing::{cli::Cli, from_dot, loop_read, loop_read_res, state::{State, Transition}, tape::{Direction, TapeTransition}};
 
 fn num_states(buf: &mut String) -> u32 {
     print!("Please enter the number of states: ");
@@ -107,20 +107,12 @@ fn fill_state(buf: &mut String, idx: NodeIndex, alphabet: &HashSet<char>, num_st
         let direction = loop_read_res(buf, 
             "\tdirection: ", 
             |buf| {
-                if let Some(dir_char) = buf[0..buf.len() - 1].chars().next() {
-                    let dir_char = dir_char.to_ascii_uppercase();
-                    if dir_char == 'L' {
-                        Ok(Direction::Left)
-                    }
-                    else if dir_char == 'R' {
-                        Ok(Direction::Right)
-                    }
-                    else {
-                        Err("\tdirection given was invalid, please reenter: ")
-                    }
+                if buf.len() >= 1 {
+                    let str = &buf[0..buf.len() - 1] .to_ascii_uppercase();
+                    Direction::try_from(str.as_str())
                 }
                 else {
-                    Err("\tno direction was entered, please reenter: ")
+                    Err("\tno direction was entered, please reenter: ".to_string())
                 } 
             }
         );
@@ -132,27 +124,7 @@ fn fill_state(buf: &mut String, idx: NodeIndex, alphabet: &HashSet<char>, num_st
             .filter(|c| !inputs.contains(c))
             .map(|c| c).collect();
         // edge
-        let disp_string = {
-            let mut s = String::new();
-            for (idx, char) in inputs.iter().enumerate() {
-                s.push(*char);
-                if idx < inputs.len() - 1 {
-                    s.push(',');
-                }
-            }
-            s.push_str(" \u{2192} ");
-            if let Some(write_c) = write {
-                s.push(write_c);
-                s.push(',');
-            }
-            if direction == Direction::Left {
-                s.push('L');
-            }
-            else {
-                s.push('R');
-            }
-            s
-        };
+        let disp_string = TapeTransition::make_disp_str(inputs.iter(), write, direction);
         let tape_edge = TapeTransition { write, direction, disp_string };
         graph.add_edge(idx, next, tape_edge);
         buf.clear();
@@ -190,7 +162,7 @@ fn main() {
 
         graph
     } else {
-        todo!("Reading from file not yet implemented");
+        from_dot(cli.file.as_ref().unwrap()).unwrap()
     };
 
     if let Some(path) = cli.output {

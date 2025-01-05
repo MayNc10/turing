@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::{Debug, Display}};
+use std::{collections::HashMap, fmt::{Debug, Display}, str::FromStr};
 
 use petgraph::{csr::{DefaultIx, IndexType}, graph::NodeIndex};
 
@@ -7,7 +7,7 @@ pub struct Transition<Idx: IndexType = DefaultIx> {
     self_idx: NodeIndex<Idx>,
 }
 
-impl<Idx: IndexType> Transition<Idx> {
+impl<Idx: IndexType + FromStr> Transition<Idx> {
     pub fn new(map: HashMap<char, NodeIndex<Idx>>) -> Transition<Idx> {
         Transition { map, self_idx: NodeIndex::end() }
     }
@@ -34,13 +34,34 @@ impl<Idx: IndexType> Transition<Idx> {
     }
 }
 
-pub enum State<Idx: IndexType = DefaultIx> {
+pub enum State<Idx: IndexType + FromStr = DefaultIx> {
     Transition(Transition<Idx>),
     Accept,
     Reject,
 }
 
-impl<Idx: IndexType> State<Idx> {
+impl<Idx: IndexType + FromStr> State<Idx> {
+    // we're passed an array of space seperated terms
+    pub fn from_node<'a, I: Iterator<Item = &'a str>>(s_it: I) -> Option<State<Idx>> {
+        // format looks like [, label, =, "q$num", ]
+        let data_str = s_it.skip(3).next()?;
+        if &data_str[1..2] == "q" {
+            if &data_str[2..data_str.len() - 1] == "a" {
+                Some(State::Accept)
+            }
+            else if &data_str[2..data_str.len() - 1] == "r" {
+                Some(Self::Reject)
+            }
+            else if let Ok(num) = data_str[2..data_str.len() - 1].parse::<Idx>() {
+                let mut trans = Transition::empty();
+                trans.set_idx(NodeIndex::from(num));
+                Some(Self::Transition(trans))
+            } 
+            else { None }
+        }
+        else { None }
+    }
+
     pub fn as_transition(&mut self) -> Option<&mut Transition<Idx>> {
         match self {
             Self::Transition(t) => Some(t),
@@ -49,23 +70,23 @@ impl<Idx: IndexType> State<Idx> {
     }
 }
 
-impl<Idx: IndexType> Display for Transition<Idx> {
+impl<Idx: IndexType + FromStr> Display for Transition<Idx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "q{:?}", self.self_idx.index())
     }
 }
 
-impl<Idx: IndexType> Display for State<Idx> {
+impl<Idx: IndexType + FromStr> Display for State<Idx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             State::Transition(t) => t.fmt(f),
             State::Accept => write!(f, "qa"),
-            State::Reject => write!(f, "r"),
+            State::Reject => write!(f, "qr"),
         }
     }
 }
 
-impl<Idx: IndexType> Debug for State<Idx> {
+impl<Idx: IndexType + FromStr> Debug for State<Idx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self)
     }
