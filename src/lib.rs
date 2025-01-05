@@ -60,7 +60,6 @@ pub fn from_dot(path: &PathBuf) -> Result<Graph<State, TapeTransition>, Box<dyn 
             .peekable();
 
         let first = tokens.next();
-        println!("line: {line}, first: {first:?}");
         if let Some(Ok(first_idx)) = first.map(|s| s.parse::<DefaultIx>()) {
             let first_idx = NodeIndex::from(first_idx);
 
@@ -78,7 +77,7 @@ pub fn from_dot(path: &PathBuf) -> Result<Graph<State, TapeTransition>, Box<dyn 
                     let (trans, map) = 
                         TapeTransition::from_edge(tokens)?;
                     // modify state to make maps
-                    graph[first_idx].as_transition().unwrap()
+                    graph[first_idx].as_transition_mut().unwrap()
                         .add_transition(map.iter(), second_idx);
                     graph.add_edge(first_idx, second_idx, trans);
                 },

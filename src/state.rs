@@ -22,11 +22,9 @@ impl<Idx: IndexType + FromStr> Transition<Idx> {
         }
     }
 
-    pub fn next_state<'a, T, F>(&self, input: &char, indexer: &'a T, idx_fun: F) -> Option<&'a State<Idx>>
-    where F: Fn(&'a T,  NodeIndex<Idx>) -> &'a State<Idx>
+    pub fn next_index(&self, input: &char, ) -> NodeIndex<Idx>
     {
-        self.map.get(input)
-            .map(|idx| idx_fun(indexer, idx.clone()))
+        self.map[input].clone()
     }
 
     pub fn set_idx(&mut self, idx:  NodeIndex<Idx>) {
@@ -62,10 +60,26 @@ impl<Idx: IndexType + FromStr> State<Idx> {
         else { None }
     }
 
-    pub fn as_transition(&mut self) -> Option<&mut Transition<Idx>> {
+    pub fn as_transition(&self) -> Option<&Transition<Idx>> {
         match self {
             Self::Transition(t) => Some(t),
             _ => None,
+        }
+    }
+
+    pub fn as_transition_mut(&mut self) -> Option<&mut Transition<Idx>> {
+        match self {
+            Self::Transition(t) => Some(t),
+            _ => None,
+        }
+    }
+
+
+    pub fn accepted(&self) -> Option<bool> {
+        match self {
+            Self::Accept => Some(true),
+            Self::Reject => Some(false),
+            Self::Transition(_) => None,
         }
     }
 }

@@ -2,7 +2,7 @@ use std::{collections::HashSet, fs::write, io::{stdin, stdout, Write}};
 
 use clap::Parser;
 use petgraph::{dot::Dot, graph::NodeIndex, Graph};
-use turing::{cli::Cli, from_dot, loop_read, loop_read_res, state::{State, Transition}, tape::{Direction, TapeTransition}};
+use turing::{cli::Cli, from_dot, loop_read, loop_read_res, state::{State, Transition}, tape::{self, Direction, TapeTransition}};
 
 fn num_states(buf: &mut String) -> u32 {
     print!("Please enter the number of states: ");
@@ -50,7 +50,7 @@ fn fill_state(buf: &mut String, idx: NodeIndex, alphabet: &HashSet<char>, num_st
             if ["y", "yes", "stop"].contains(&buf.trim().to_lowercase().as_str()) {
                 // all other states are reject
                 // reject is always at num_states + 1
-                graph[idx].as_transition().unwrap()
+                graph[idx].as_transition_mut().unwrap()
                     .add_transition(left.iter(), (num_states + 1).into());
                 buf.clear();
                 return;
@@ -118,7 +118,7 @@ fn fill_state(buf: &mut String, idx: NodeIndex, alphabet: &HashSet<char>, num_st
         );
 
         // add state map
-        graph[idx].as_transition().unwrap()
+        graph[idx].as_transition_mut().unwrap()
             .add_transition(inputs.iter(), next);
         left = left.into_iter()
             .filter(|c| !inputs.contains(c))
@@ -149,7 +149,7 @@ fn main() {
         let mut graph: Graph<State, TapeTransition> = Graph::new();
         for _ in 0..num_states {
             let idx = graph.add_node(State::Transition(Transition::empty()));
-            graph[idx].as_transition().unwrap().set_idx(idx);
+            graph[idx].as_transition_mut().unwrap().set_idx(idx);
         }
         // add accept and reject
         graph.add_node(State::Accept);
@@ -164,6 +164,49 @@ fn main() {
     } else {
         from_dot(cli.file.as_ref().unwrap()).unwrap()
     };
+
+    println!("Loaded state machine");
+    let mut tape_str = String::new();
+    println!("Enter input tape: ");
+    stdout().flush().unwrap();
+    stdin().read_line(&mut tape_str).unwrap();
+    let mut tape = vec![' '];
+    tape.extend(tape_str.trim().chars());
+    tape.push(' ');
+
+    println!("Running turing machine (using \' \' as tape delimeter and q1 as start state)");
+    let mut state_idx = NodeIndex::new(0);
+    let mut head_idx = 1;
+    loop {
+        let state = &graph[state_idx];
+        if let Some(accepted) = state.accepted() {
+            if accepted {
+                println!("Turing machine accepted input {}", tape_str.trim());
+            }
+            else {  
+                println!("Turing machine rejected input {}", tape_str.trim());
+            }
+            break;
+        }
+
+        // step
+        let c = tape[head_idx];
+        let next_idx = state
+            .as_transition().unwrap()
+            .next_index(&c);
+
+        // find edge between
+        let mut edges = graph.edges_connecting(state_idx, next_idx);
+        let trans = edges.next().unwrap().weight();
+
+        if let Some(write) = trans.write {
+            tape[head_idx] = write;
+        }
+
+        head_idx = (head_idx as i32 + trans.direction.offset()) as usize;
+        state_idx = next_idx;
+    }
+
 
     if let Some(path) = cli.output {
         // output dot

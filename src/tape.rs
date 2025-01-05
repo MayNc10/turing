@@ -6,6 +6,15 @@ pub enum Direction {
     Right
 }
 
+impl Direction {
+    pub fn offset(&self) -> i32 {
+        match self {
+            Self::Left => -1,
+            Self::Right => 1,
+        }
+    }
+}
+
 impl TryFrom<&str> for Direction {
     type Error = String;
 
@@ -34,10 +43,13 @@ impl TapeTransition {
 {
         // format looks like [, label, =, "${char*}, $arrow, {$write?,dir}", ]
         let mut s_it = s_it.skip(3);
-        let key_char = s_it.next().ok_or("missing inputs")?[1..].split(",")
-            .map(|s| s.chars().next());
+        let key_char = s_it.next()
+            .ok_or("missing inputs")?[1..].split(",")
+            .map(|s| s.chars().next())
+            .map(|c| {
+                c.map(|c| if c == '\u{2294}' {' '} else {c})
+            });
         let end = s_it.skip(1).next().ok_or("missing direction/write")?;
-        println!("end: {end}");
         let end_phrase = &end[0..end.len() - 1];
         let mut split = end_phrase.split(",");
         let (write, dir_str) = 
@@ -53,7 +65,7 @@ impl TapeTransition {
         let direction = Direction::try_from(dir_str)?;
         let keymap = key_char.collect::<Option<HashSet<char>>>().ok_or("missing chars between commas")?;
         let disp_string = TapeTransition::make_disp_str(
-            keymap.iter().map(|c| if *c == '\u{2294}' {&' '} else {c}), 
+            keymap.iter(), 
             write, direction);
         
         let tape = TapeTransition { write, direction, disp_string };
