@@ -27,8 +27,23 @@ fn alphabet(buf: &mut String, ty: &str) -> HashSet<char> {
 fn fill_state(buf: &mut String, idx: NodeIndex, alphabet: &HashSet<char>, num_states: u32, 
     graph: &mut Graph<State, TapeTransition>) 
 {
-    println!("q{}: ", idx.index() + 1);
     let mut left = alphabet.clone();
+    print!("q{} (inputs: ", idx.index() + 1);
+    let mut it = left.iter().peekable();
+            while let Some(c) = it.next() {
+                let s = {
+                    if *c == ' ' { " (blank)".to_string() }
+                    else { c.to_string() }
+                };
+                if it.peek().is_some() {
+                    print!("{s}, ");
+                }
+                else {
+                    println!("{s}): ");
+                }
+            }
+
+
     while !left.is_empty() {
         if left != *alphabet {
             print!("Stop? (remaining inputs: ");
@@ -76,7 +91,7 @@ fn fill_state(buf: &mut String, idx: NodeIndex, alphabet: &HashSet<char>, num_st
                     } else { &buf.trim() };
                     if let Ok(next_idx) = next_str.parse::<u32>() {
                         if next_idx > num_states {
-                            Err(format!("State given was out of bounds! State: {}", next_idx))
+                            Err(format!("\tState given ({}) was out of bounds, please reenter: ", next_idx))
                         }
                         else {
                             Ok(NodeIndex::from(next_idx - 1))
@@ -90,7 +105,7 @@ fn fill_state(buf: &mut String, idx: NodeIndex, alphabet: &HashSet<char>, num_st
                             Ok(NodeIndex::from(num_states + 1))
                         } 
                         else {
-                            Err(format!("Invalid next state: {}, parsed to: {}", buf.trim(), next_str))
+                            Err(format!("\tInvalid next state: {}, please reenter: ", next_str))
                         }
                     }
                    

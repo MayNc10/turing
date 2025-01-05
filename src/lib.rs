@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Debug, fs::read_to_string, io::{stdin, stdout, Write}, path::PathBuf};
+use std::{error::Error, fmt::{Debug, Display}, fs::read_to_string, io::{stdin, stdout, Write}, path::PathBuf};
 
 use petgraph::{csr::DefaultIx, graph::NodeIndex, Graph};
 use state::State;
@@ -20,7 +20,7 @@ where
     let mut val = transform(buf);
     buf.clear();
     while !predicate(&val) {
-        println!("{}", repeat_msg);
+        print!("{}", repeat_msg);
         stdout().flush().unwrap();
         stdin().read_line(buf).unwrap();
         val = transform(buf);
@@ -29,7 +29,7 @@ where
     val
 }
 
-pub fn loop_read_res<T, S: Debug, F>(
+pub fn loop_read_res<T, S: Display + Debug, F>(
     buf: &mut String, msg: &str, transform: F) -> T
 where 
     F: Fn(&String) -> Result<T, S>
@@ -40,7 +40,7 @@ where
     let mut val = transform(buf);
     buf.clear();
     while let Err(err) = val {
-        println!("{:?}", err);
+        print!("{}", err);
         stdout().flush().unwrap();
         stdin().read_line(buf).unwrap();
         val = transform(buf);
